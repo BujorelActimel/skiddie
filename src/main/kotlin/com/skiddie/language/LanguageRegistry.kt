@@ -15,18 +15,22 @@ object LanguageRegistry {
     private val languages = mutableMapOf<Int, Language>()
     private var nextId = 1
 
-    private val json = Json {
-        prettyPrint = true
-        ignoreUnknownKeys = true
+    private val json by lazy {
+        Json {
+            prettyPrint = true
+            ignoreUnknownKeys = true
+        }
     }
 
-    private val userConfigDir = Paths.get(
-        System.getProperty("user.home") ?: error("user.home system property not set"),
-        ".config",
-        "skiddie"
-    ).toFile()
+    private val userConfigDir by lazy {
+        Paths.get(
+            System.getProperty("user.home") ?: error("user.home system property not set"),
+            ".config",
+            "skiddie"
+        ).toFile()
+    }
 
-    private val userLanguagesFile = File(userConfigDir, "user-languages.json")
+    private val userLanguagesFile by lazy { File(userConfigDir, "user-languages.json") }
 
     fun load() {
         loadBuiltInLanguages()
