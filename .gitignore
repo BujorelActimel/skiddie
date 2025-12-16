@@ -1,0 +1,26 @@
+# Gradle
+.gradle/
+build/
+gradle-app.setting
+!gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# macOS
+.DS_Store
+
+# Build outputs
+out/
+bin/
+
+# Kotlin
+.kotlin/
+*.kotlin_module
+
+# Local configuration
+local.properties

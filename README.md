@@ -1,4 +1,4 @@
-# script editor
+# Skiddie script editor
 
 MUST-have features:
 
