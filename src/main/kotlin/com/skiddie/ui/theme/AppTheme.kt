@@ -27,6 +27,11 @@ private val GruvboxDarkColorScheme = darkColorScheme(
 )
 
 private val AppTypography = Typography(
+    titleLarge = TextStyle(
+        fontSize = 24.sp,
+        fontWeight = FontWeight.Bold
+    ),
+
     titleMedium = TextStyle(
         fontSize = 18.sp,
         fontWeight = FontWeight.SemiBold
