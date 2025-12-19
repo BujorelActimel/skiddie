@@ -31,7 +31,13 @@ class ScriptExecutor(
                 onOutputLine(OutputLine("Starting process...", OutputType.SYSTEM))
 
                 currentProcess = processBuilder.start()
-                val process = currentProcess!!
+                val process = currentProcess ?: run {
+                    val errorLine = OutputLine("Failed to start process", OutputType.STDERR)
+                    outputLines.add(errorLine)
+                    onOutputLine(errorLine)
+                    onComplete(ExecutionResult(-1, outputLines))
+                    return@launch
+                }
 
                 val outputJob = launch(Dispatchers.IO) {
                     try {
@@ -78,7 +84,7 @@ class ScriptExecutor(
             }
         }
 
-        return executionJob!!
+        return executionJob ?: throw IllegalStateException("Execution job not initialized")
     }
 
     fun stop() {

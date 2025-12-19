@@ -48,12 +48,8 @@ class FileManager {
     }
 
     fun getTempFileForExecution(content: String, extension: String): File {
-        val tempFile = if (currentFilePath != null) {
-            val originalName = File(currentFilePath!!).nameWithoutExtension
-            File.createTempFile("${originalName}_", ".$extension", tempDir)
-        } else {
-            File.createTempFile("untitled_", ".$extension", tempDir)
-        }
+        val originalName = currentFilePath?.let { File(it).nameWithoutExtension } ?: "untitled"
+        val tempFile = File.createTempFile("${originalName}_", ".$extension", tempDir)
 
         tempFile.writeText(content)
         return tempFile
@@ -64,10 +60,7 @@ class FileManager {
     }
 
     fun getDisplayName(): String {
-        return when {
-            currentFilePath != null -> File(currentFilePath!!).name
-            else -> "Untitled"
-        }
+        return currentFilePath?.let { File(it).name } ?: "Untitled"
     }
 
     fun getFullDisplayPath(): String {
