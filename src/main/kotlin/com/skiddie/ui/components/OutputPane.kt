@@ -48,7 +48,7 @@ fun OutputPane(
                 }
             }
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f))
 
             val scrollState = rememberScrollState()
             val focusRequester = remember { FocusRequester() }
@@ -82,40 +82,12 @@ fun OutputPane(
                         }
 
                         if (canSendInput) {
-                            Row(
-                                modifier = Modifier.padding(vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = "> ",
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-
-                                BasicTextField(
-                                    value = stdinInput,
-                                    onValueChange = onStdinInputChange,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .focusRequester(focusRequester)
-                                        .onPreviewKeyEvent { event ->
-                                            if (event.type == KeyEventType.KeyDown &&
-                                                event.key == Key.Enter &&
-                                                !event.isShiftPressed &&
-                                                !event.isCtrlPressed &&
-                                                !event.isAltPressed &&
-                                                !event.isMetaPressed) {
-                                                onStdinSubmit()
-                                                true
-                                            } else {
-                                                false
-                                            }
-                                        },
-                                    textStyle = MaterialTheme.typography.bodyMedium.copy(
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    ),
-                                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary)
-                                )
-                            }
+                            StdinInputField(
+                                value = stdinInput,
+                                onValueChange = onStdinInputChange,
+                                onSubmit = onStdinSubmit,
+                                focusRequester = focusRequester
+                            )
                         }
                     }
                 }
@@ -125,6 +97,49 @@ fun OutputPane(
                 scrollState.animateScrollTo(scrollState.maxValue)
             }
         }
+    }
+}
+
+@Composable
+private fun StdinInputField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    onSubmit: () -> Unit,
+    focusRequester: FocusRequester
+) {
+    Row(
+        modifier = Modifier.padding(vertical = 2.dp)
+    ) {
+        Text(
+            text = "> ",
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+            style = MaterialTheme.typography.bodyMedium
+        )
+
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(focusRequester)
+                .onPreviewKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown &&
+                        event.key == Key.Enter &&
+                        !event.isShiftPressed &&
+                        !event.isCtrlPressed &&
+                        !event.isAltPressed &&
+                        !event.isMetaPressed) {
+                        onSubmit()
+                        true
+                    } else {
+                        false
+                    }
+                },
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                color = MaterialTheme.colorScheme.onSurface
+            ),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary)
+        )
     }
 }
 

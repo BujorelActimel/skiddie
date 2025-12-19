@@ -91,6 +91,8 @@ fun CodeEditor(
                 }
             }
 
+            HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f))
+
             BasicTextField(
                 value = code,
                 onValueChange = onCodeChange,

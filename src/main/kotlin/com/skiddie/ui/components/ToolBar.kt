@@ -29,66 +29,70 @@ fun ToolBar(
         color = MaterialTheme.colorScheme.surface,
         shadowElevation = 4.dp
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp)
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Skiddie",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.weight(1f))
-
+        Column {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(64.dp)
+                    .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                LanguageSelector(
-                    selectedLanguage = selectedLanguage,
-                    availableLanguages = availableLanguages,
-                    onLanguageSelected = onLanguageSelected,
-                    enabled = !isRunning
+                Text(
+                    text = "Skiddie",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
-                Button(
-                    onClick = onRun,
-                    enabled = !isRunning,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFb8bb26)
-                    )
+                Spacer(modifier = Modifier.weight(1f))
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.PlayArrow, contentDescription = "Run")
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Run")
+                    LanguageSelector(
+                        selectedLanguage = selectedLanguage,
+                        availableLanguages = availableLanguages,
+                        onLanguageSelected = onLanguageSelected,
+                        enabled = !isRunning
+                    )
+
+                    Button(
+                        onClick = onRun,
+                        enabled = !isRunning,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFb8bb26)
+                        )
+                    ) {
+                        Icon(Icons.Default.PlayArrow, contentDescription = "Run")
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Run")
+                    }
+
+                    Button(
+                        onClick = onStop,
+                        enabled = isRunning,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Icon(Icons.Default.Stop, contentDescription = "Stop")
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Stop")
+                    }
                 }
 
-                Button(
-                    onClick = onStop,
-                    enabled = isRunning,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
+                Spacer(modifier = Modifier.weight(1f))
+
+                IconButton(onClick = onHelp) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Help,
+                        contentDescription = "Help",
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
-                ) {
-                    Icon(Icons.Default.Stop, contentDescription = "Stop")
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Stop")
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
-
-            IconButton(onClick = onHelp) {
-                Icon(
-                    Icons.AutoMirrored.Filled.Help,
-                    contentDescription = "Help",
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
-            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f))
         }
     }
 }

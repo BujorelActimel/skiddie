@@ -76,6 +76,17 @@ fun SkiddieApp(
                             outputLines = emptyList()
                             isRunning = true
 
+                            if (fileManager.hasFile() && fileManager.isDirty()) {
+                                try {
+                                    fileManager.save(code)
+                                    fileStateVersion++
+                                } catch (e: Exception) {
+                                    outputLines = listOf(
+                                        OutputLine("Warning: Failed to autosave before run: ${e.message}", OutputType.SYSTEM)
+                                    )
+                                }
+                            }
+
                             val tempFile = fileManager.getTempFileForExecution(
                                 content = code,
                                 extension = language.fileExtension
@@ -169,6 +180,8 @@ fun SkiddieApp(
                     },
                     modifier = Modifier.weight(0.65f).fillMaxHeight()
                 )
+
+                VerticalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f))
 
                 OutputPane(
                     outputLines = outputLines,
