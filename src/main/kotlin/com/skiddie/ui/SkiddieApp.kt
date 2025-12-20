@@ -10,8 +10,10 @@ import com.skiddie.execution.ScriptExecutor
 import com.skiddie.file.FileDialogs
 import com.skiddie.file.FileManager
 import com.skiddie.language.LanguageRegistry
+import com.skiddie.terminal.TerminalBuffer
+import com.skiddie.terminal.TerminalMode
 import com.skiddie.ui.components.CodeEditor
-import com.skiddie.ui.components.OutputPane
+import com.skiddie.ui.components.TerminalPane
 import com.skiddie.ui.components.ToolBar
 import kotlinx.coroutines.launch
 
@@ -22,7 +24,8 @@ fun SkiddieApp(
     val fileManager = remember { FileManager() }
 
     var code by remember { mutableStateOf("// Write your Kotlin code here\n\nfun main() {\n    println(\"Hello, Skiddie!\")\n}") }
-    var outputLines by remember { mutableStateOf<List<OutputLine>>(emptyList()) }
+    val terminalBuffer = remember { TerminalBuffer(maxLines = 10000) }
+    var terminalMode by remember { mutableStateOf(TerminalMode.READ_ONLY) }
     var stdinInput by remember { mutableStateOf("") }
     var isRunning by remember { mutableStateOf(false) }
     var fileStateVersion by remember { mutableStateOf(0) } // Trigger recomposition when file state changes
@@ -40,25 +43,27 @@ fun SkiddieApp(
         onTitleChange("$path$indicator")
     }
 
-    val fileName = remember(fileStateVersion, code) {
-        fileManager.markDirty(code)
+    val fileName = remember(fileStateVersion) {
         fileManager.getDisplayName()
     }
 
-    val dirtyIndicator = remember(fileStateVersion, code) {
-        fileManager.markDirty(code)
+    val dirtyIndicator = remember(fileStateVersion) {
         fileManager.getDirtyIndicator()
     }
 
     val onStdinSubmit: () -> Unit = {
         if (stdinInput.isNotEmpty() && isRunning) {
-            executor?.sendInput(stdinInput)
+            // Capture the input value before clearing it
+            val inputToSend = stdinInput
             stdinInput = ""
+            executorScope.launch {
+                executor?.sendInput(inputToSend)
+            }
         }
     }
 
     val onClearOutput: () -> Unit = {
-        outputLines = emptyList()
+        terminalBuffer.clear()
     }
 
     Surface(
@@ -73,7 +78,8 @@ fun SkiddieApp(
                 onRun = {
                     selectedLanguage?.let { language ->
                         try {
-                            outputLines = emptyList()
+                            terminalBuffer.clear()
+                            terminalMode = TerminalMode.INTERACTIVE
                             isRunning = true
 
                             if (fileManager.hasFile() && fileManager.isDirty()) {
@@ -81,7 +87,7 @@ fun SkiddieApp(
                                     fileManager.save(code)
                                     fileStateVersion++
                                 } catch (e: Exception) {
-                                    outputLines = listOf(
+                                    terminalBuffer.addLine(
                                         OutputLine("Warning: Failed to autosave before run: ${e.message}", OutputType.SYSTEM)
                                     )
                                 }
@@ -103,29 +109,35 @@ fun SkiddieApp(
                                     command = command,
                                     workingDirectory = tempFile.parentFile,
                                     onOutputLine = { line ->
-                                        outputLines = outputLines + line
+                                        terminalBuffer.addLine(line)
                                     },
                                     onComplete = { result ->
                                         isRunning = false
+                                        terminalMode = TerminalMode.READ_ONLY
                                         tempFile.delete()
                                     }
                                 )
                             }
                         } catch (e: Exception) {
-                            outputLines = listOf(
+                            terminalBuffer.clear()
+                            terminalBuffer.addLine(
                                 OutputLine("Failed to start: ${e.message}", OutputType.STDERR)
                             )
+                            terminalMode = TerminalMode.READ_ONLY
                             isRunning = false
                         }
                     } ?: run {
-                        outputLines = listOf(
+                        terminalBuffer.clear()
+                        terminalBuffer.addLine(
                             OutputLine("No language selected", OutputType.SYSTEM)
                         )
+                        terminalMode = TerminalMode.READ_ONLY
                     }
                 },
                 onStop = {
                     executor?.stop()
                     isRunning = false
+                    terminalMode = TerminalMode.READ_ONLY
                 },
                 onHelp = {
                     // TODO: Show help dialog
@@ -142,17 +154,18 @@ fun SkiddieApp(
                     dirtyIndicator = dirtyIndicator,
                     onNew = {
                         code = fileManager.new()
-                        outputLines = emptyList()
+                        terminalBuffer.clear()
                         fileStateVersion++
                     },
                     onOpen = {
                         FileDialogs.openFile(title = "Open Script")?.let { file ->
                             try {
                                 code = fileManager.open(file.absolutePath)
-                                outputLines = emptyList()
+                                terminalBuffer.clear()
                                 fileStateVersion++
                             } catch (e: Exception) {
-                                outputLines = listOf(
+                                terminalBuffer.clear()
+                                terminalBuffer.addLine(
                                     OutputLine("Error opening file: ${e.message}", OutputType.STDERR)
                                 )
                             }
@@ -173,7 +186,8 @@ fun SkiddieApp(
                                 }
                             }
                         } catch (e: Exception) {
-                            outputLines = listOf(
+                            terminalBuffer.clear()
+                            terminalBuffer.addLine(
                                 OutputLine("Error saving file: ${e.message}", OutputType.STDERR)
                             )
                         }
@@ -183,13 +197,13 @@ fun SkiddieApp(
 
                 VerticalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f))
 
-                OutputPane(
-                    outputLines = outputLines,
+                TerminalPane(
+                    outputLines = terminalBuffer.getLines(),
                     stdinInput = stdinInput,
                     onStdinInputChange = { stdinInput = it },
                     onStdinSubmit = onStdinSubmit,
                     onClear = onClearOutput,
-                    canSendInput = isRunning,
+                    terminalMode = terminalMode,
                     modifier = Modifier.weight(0.35f).fillMaxHeight()
                 )
             }
