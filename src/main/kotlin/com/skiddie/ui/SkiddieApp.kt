@@ -1,12 +1,10 @@
 package com.skiddie.ui
 
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.*
 import com.skiddie.execution.OutputLine
 import com.skiddie.execution.OutputType
@@ -36,7 +34,7 @@ fun SkiddieApp(
     var terminalMode by remember { mutableStateOf(TerminalMode.READ_ONLY) }
     var stdinInput by remember { mutableStateOf("") }
     var isRunning by remember { mutableStateOf(false) }
-    var fileStateVersion by remember { mutableStateOf(0) } // Trigger recomposition when file state changes
+    var fileStateVersion by remember { mutableStateOf(0) }
 
     val availableLanguages = remember { LanguageRegistry.all() }
     var selectedLanguage by remember { mutableStateOf(availableLanguages.firstOrNull()) }
@@ -44,7 +42,6 @@ fun SkiddieApp(
     var executor by remember { mutableStateOf<ScriptExecutor?>(null) }
     val executorScope = rememberCoroutineScope()
 
-    // Focus requesters for editor and terminal (for programmatic focus switching)
     val editorFocusRequester = remember { FocusRequester() }
     val terminalFocusRequester = remember { FocusRequester() }
 
@@ -65,7 +62,6 @@ fun SkiddieApp(
 
     val onStdinSubmit: () -> Unit = {
         if (stdinInput.isNotEmpty() && isRunning) {
-            // Capture the input value before clearing it
             val inputToSend = stdinInput
             stdinInput = ""
             executorScope.launch {
@@ -138,7 +134,6 @@ fun SkiddieApp(
         terminalMode = TerminalMode.READ_ONLY
     }
 
-    // Register callbacks for global shortcuts
     LaunchedEffect(Unit) {
         onRunStopShortcut {
             if (isRunning) stopScript() else runScript()
@@ -158,7 +153,26 @@ fun SkiddieApp(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier.fillMaxSize()
+                .onPreviewKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown) {
+                        when {
+                            event.key == Key.Enter && (event.isCtrlPressed || event.isMetaPressed) -> {
+                                if (isRunning) stopScript() else runScript()
+                                true
+                            }
+                            event.key == Key.L && (event.isCtrlPressed || event.isMetaPressed) -> {
+                                terminalBuffer.clear()
+                                true
+                            }
+                            else -> false
+                        }
+                    } else {
+                        false
+                    }
+                }
+        ) {
             ToolBar(
                 selectedLanguage = selectedLanguage,
                 availableLanguages = availableLanguages,

@@ -145,8 +145,8 @@ fun CodeEditor(
                 ) {
                     Column(
                         modifier = Modifier
-                            .verticalScroll(verticalScrollState, enabled = false) // Sync with editor scroll
-                            .padding(start = 12.dp, end = 12.dp, top = 16.dp, bottom = 400.dp) // Match editor padding
+                            .verticalScroll(verticalScrollState, enabled = false)
+                            .padding(start = 12.dp, end = 12.dp, top = 16.dp, bottom = 400.dp)
                     ) {
                         lines.forEachIndexed { index, _ ->
                             Text(
@@ -207,7 +207,6 @@ private fun handleTextChange(
     oldValue: TextFieldValue,
     newValue: TextFieldValue
 ): TextFieldValue {
-    // Check if a single character was added (not pasted, not deleted)
     if (newValue.text.length == oldValue.text.length + 1 &&
         newValue.selection.collapsed) {
 
@@ -215,7 +214,6 @@ private fun handleTextChange(
         if (insertedPos >= 0 && insertedPos < newValue.text.length) {
             val insertedChar = newValue.text[insertedPos]
 
-            // Auto-close brackets and quotes
             val closingChar = when (insertedChar) {
                 '{' -> '}'
                 '(' -> ')'
@@ -226,12 +224,10 @@ private fun handleTextChange(
             }
 
             if (closingChar != null) {
-                // Insert the closing character
                 val textWithClosing = newValue.text.substring(0, insertedPos + 1) +
                         closingChar +
                         newValue.text.substring(insertedPos + 1)
 
-                // Keep cursor between the pair
                 return TextFieldValue(
                     text = textWithClosing,
                     selection = TextRange(insertedPos + 1)
@@ -240,7 +236,6 @@ private fun handleTextChange(
         }
     }
 
-    // Check if backspace was pressed on an opening bracket with matching closing bracket
     if (newValue.text.length == oldValue.text.length - 1 &&
         newValue.selection.collapsed &&
         oldValue.selection.collapsed) {
@@ -254,7 +249,6 @@ private fun handleTextChange(
                 null
             }
 
-            // Check if we deleted an opening bracket and the next char is its closing pair
             val shouldDeletePair = when {
                 deletedChar == '{' && nextChar == '}' -> true
                 deletedChar == '(' && nextChar == ')' -> true
@@ -265,7 +259,6 @@ private fun handleTextChange(
             }
 
             if (shouldDeletePair) {
-                // Delete the closing bracket too
                 val textWithoutPair = newValue.text.substring(0, deletedPos) +
                         newValue.text.substring(deletedPos + 1)
 
@@ -291,10 +284,9 @@ private fun handleKeyEvent(
 
 
     return when {
-        // Tab: Insert 4 spaces
         event.key == Key.Tab && !event.isShiftPressed -> {
             val newText = textFieldValue.text.substring(0, textFieldValue.selection.start) +
-                    "    " + // 4 spaces
+                    "    " +
                     textFieldValue.text.substring(textFieldValue.selection.end)
             val newCursorPos = textFieldValue.selection.start + 4
             onValueChange(
@@ -306,15 +298,12 @@ private fun handleKeyEvent(
             true
         }
 
-        // Shift+Tab: Dedent (remove up to 4 spaces at the beginning of current line)
         event.key == Key.Tab && event.isShiftPressed -> {
             val text = textFieldValue.text
             val cursorPos = textFieldValue.selection.start
 
-            // Find the start of the current line
             val lineStart = text.lastIndexOf('\n', cursorPos - 1) + 1
 
-            // Get the leading spaces on this line
             var spacesToRemove = 0
             for (i in lineStart until minOf(lineStart + 4, text.length)) {
                 if (text[i] == ' ') {
@@ -338,27 +327,21 @@ private fun handleKeyEvent(
             true
         }
 
-        // Enter: Auto-indentation (but not Cmd/Ctrl+Enter which is for run/stop)
         event.key == Key.Enter && !event.isCtrlPressed && !event.isMetaPressed -> {
             val text = textFieldValue.text
             val cursorPos = textFieldValue.selection.start
 
-            // Find the start of the current line
             val lineStart = text.lastIndexOf('\n', cursorPos - 1) + 1
             val currentLine = text.substring(lineStart, cursorPos)
 
-            // Count leading spaces on current line
             val leadingSpaces = currentLine.takeWhile { it == ' ' }.length
 
-            // Check if previous non-whitespace character is an opening bracket
             val trimmedLine = currentLine.trimEnd()
             val needsExtraIndent = trimmedLine.isNotEmpty() &&
                 (trimmedLine.last() == '{' || trimmedLine.last() == '(' || trimmedLine.last() == '[')
 
-            // Calculate indentation for new line
             val indentation = " ".repeat(leadingSpaces + if (needsExtraIndent) 4 else 0)
 
-            // Insert newline with indentation
             val newText = text.substring(0, cursorPos) +
                     "\n" + indentation +
                     text.substring(textFieldValue.selection.end)
