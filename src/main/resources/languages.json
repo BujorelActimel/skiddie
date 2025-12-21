@@ -4,7 +4,7 @@
       "id": 1,
       "name": "Kotlin",
       "fileExtension": "kts",
-      "grammarPath": "/grammars/kotlin.so",
+      "grammarPath": "kotlin",
       "runCommand": "kotlinc -script {file}",
       "isBuiltIn": true
     },
@@ -12,7 +12,7 @@
       "id": 2,
       "name": "Swift",
       "fileExtension": "swift",
-      "grammarPath": "/grammars/swift.so",
+      "grammarPath": "swift",
       "runCommand": "/usr/bin/env swift {file}",
       "isBuiltIn": true
     }

@@ -17,19 +17,20 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.*
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.skiddie.highlighting.SyntaxHighlighter
+import com.skiddie.highlighting.SyntaxHighlightTransformation
+import com.skiddie.ui.theme.highlightTheme
 
 @Composable
 fun CodeEditor(
     code: String,
     onCodeChange: (String) -> Unit,
+    selectedLanguage: com.skiddie.language.Language? = null,
     fileName: String = "Untitled",
     dirtyIndicator: String = "",
     onNew: () -> Unit = {},
@@ -39,6 +40,24 @@ fun CodeEditor(
     modifier: Modifier = Modifier
 ) {
     var textFieldValue by remember { mutableStateOf(TextFieldValue(code)) }
+
+    val highlightTheme = MaterialTheme.highlightTheme
+
+    val highlighter = remember(selectedLanguage, highlightTheme, fileName) {
+        selectedLanguage?.let { lang ->
+            SyntaxHighlighter.create(lang, highlightTheme)
+        }
+    }
+
+    val visualTransformation = remember(highlighter) {
+        highlighter?.let { SyntaxHighlightTransformation(it) } ?: VisualTransformation.None
+    }
+
+    DisposableEffect(highlighter) {
+        onDispose {
+            highlighter?.close()
+        }
+    }
 
     LaunchedEffect(code) {
         if (textFieldValue.text != code) {
@@ -195,7 +214,8 @@ fun CodeEditor(
                         textStyle = MaterialTheme.typography.bodyLarge.copy(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         ),
-                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary)
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                        visualTransformation = visualTransformation
                     )
                 }
             }

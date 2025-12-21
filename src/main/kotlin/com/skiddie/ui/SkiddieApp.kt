@@ -190,6 +190,7 @@ fun SkiddieApp(
                 CodeEditor(
                     code = code,
                     onCodeChange = { code = it },
+                    selectedLanguage = selectedLanguage,
                     fileName = fileName,
                     dirtyIndicator = dirtyIndicator,
                     focusRequester = editorFocusRequester,

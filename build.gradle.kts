@@ -29,8 +29,9 @@ dependencies {
     // JSON serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 
-    // Tree-sitter
-    implementation("io.github.tree-sitter:ktreesitter:0.24.1")
+    // Tree-sitter NG
+    implementation("io.github.bonede:tree-sitter:0.25.3")
+    implementation("io.github.bonede:tree-sitter-kotlin:0.3.8.1")
 
     // Testing
     testImplementation(kotlin("test"))

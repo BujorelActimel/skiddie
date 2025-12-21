@@ -12,6 +12,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.skiddie.highlighting.HighlightTheme
 
 private val GruvboxDarkColorScheme = darkColorScheme(
     primary = Color(0xFF83a598),        // blue
@@ -86,6 +87,27 @@ val MaterialTheme.terminalColors: TerminalColors
     @Composable
     get() = LocalTerminalColors.current
 
+private val GruvboxDarkHighlightTheme = HighlightTheme(
+    keyword = Color(0xFFfb4934),        // red - keywords
+    string = Color(0xFFb8bb26),         // green - strings
+    comment = Color(0xFF928374),        // gray - comments
+    number = Color(0xFFd3869b),         // purple - numbers
+    function = Color(0xFFfabd2f),       // yellow - functions
+    type = Color(0xFF83a598),           // blue - types
+    variable = Color(0xFFebdbb2),       // fg1 - variables
+    operator = Color(0xFFfe8019),       // orange - operators
+    punctuation = Color(0xFFd5c4a1),    // fg2 - punctuation
+    property = Color(0xFFfabd2f),       // yellow - properties
+    constant = Color(0xFFd3869b),       // purple - constants
+    default = Color(0xFFebdbb2)         // fg1 - default
+)
+
+val LocalHighlightTheme = staticCompositionLocalOf { GruvboxDarkHighlightTheme }
+
+val MaterialTheme.highlightTheme: HighlightTheme
+    @Composable
+    get() = LocalHighlightTheme.current
+
 private val AppTypography = Typography(
     titleLarge = TextStyle(
         fontSize = 24.sp,
@@ -114,7 +136,10 @@ private val AppTypography = Typography(
 fun SkiddieTheme(
     content: @Composable () -> Unit
 ) {
-    CompositionLocalProvider(LocalTerminalColors provides GruvboxDarkTerminalColors) {
+    CompositionLocalProvider(
+        LocalTerminalColors provides GruvboxDarkTerminalColors,
+        LocalHighlightTheme provides GruvboxDarkHighlightTheme
+    ) {
         MaterialTheme(
             colorScheme = GruvboxDarkColorScheme,
             typography = AppTypography,
