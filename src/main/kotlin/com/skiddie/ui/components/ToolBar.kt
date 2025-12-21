@@ -135,16 +135,6 @@ private fun LanguageSelector(
                     }
                 )
             }
-
-            HorizontalDivider()
-
-            DropdownMenuItem(
-                text = { Text("+ Add Language...") },
-                onClick = {
-                    expanded = false
-                    // TODO: Open add language dialog
-                }
-            )
         }
     }
 }
