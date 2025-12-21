@@ -32,6 +32,7 @@ dependencies {
     // Tree-sitter NG
     implementation("io.github.bonede:tree-sitter:0.25.3")
     implementation("io.github.bonede:tree-sitter-kotlin:0.3.8.1")
+    implementation("io.github.bonede:tree-sitter-swift:0.5.0")
 
     // Testing
     testImplementation(kotlin("test"))
