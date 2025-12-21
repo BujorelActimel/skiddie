@@ -1,5 +1,6 @@
 package com.skiddie.ui.components
 
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -28,6 +29,7 @@ fun TerminalPane(
     onStdinSubmit: () -> Unit,
     onClear: () -> Unit,
     terminalMode: TerminalMode,
+    focusRequester: androidx.compose.ui.focus.FocusRequester? = null,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -57,11 +59,12 @@ fun TerminalPane(
             HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f))
 
             val listState = rememberLazyListState()
-            val focusRequester = remember { FocusRequester() }
+            val internalFocusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
+            val actualFocusRequester = focusRequester ?: internalFocusRequester
 
             LaunchedEffect(terminalMode) {
                 if (terminalMode == TerminalMode.INTERACTIVE) {
-                    focusRequester.requestFocus()
+                    actualFocusRequester.requestFocus()
                 }
             }
 
@@ -70,6 +73,8 @@ fun TerminalPane(
                     .weight(1f)
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .focusRequester(actualFocusRequester)
+                    .focusable()
             ) {
                 SelectionContainer {
                     LazyColumn(
@@ -98,7 +103,7 @@ fun TerminalPane(
                                         value = stdinInput,
                                         onValueChange = onStdinInputChange,
                                         onSubmit = onStdinSubmit,
-                                        focusRequester = focusRequester
+                                        focusRequester = actualFocusRequester
                                     )
                                 }
                             }

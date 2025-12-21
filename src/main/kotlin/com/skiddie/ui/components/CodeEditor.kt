@@ -1,6 +1,7 @@
 package com.skiddie.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicTextField
@@ -12,6 +13,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.AnnotatedString
@@ -32,6 +35,7 @@ fun CodeEditor(
     onNew: () -> Unit = {},
     onOpen: () -> Unit = {},
     onSave: () -> Unit = {},
+    focusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier
 ) {
     var textFieldValue by remember { mutableStateOf(TextFieldValue(code)) }
@@ -129,6 +133,8 @@ fun CodeEditor(
 
             val verticalScrollState = rememberScrollState()
             val horizontalScrollState = rememberScrollState()
+            val internalFocusRequester = remember { FocusRequester() }
+            val actualFocusRequester = focusRequester ?: internalFocusRequester
 
             Row(modifier = Modifier.fillMaxSize()) {
                 Box(
@@ -161,6 +167,12 @@ fun CodeEditor(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .clickable(
+                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            actualFocusRequester.requestFocus()
+                        }
                         .verticalScroll(verticalScrollState)
                         .horizontalScroll(horizontalScrollState)
                 ) {
@@ -173,6 +185,7 @@ fun CodeEditor(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(start = 12.dp, end = 16.dp, top = 16.dp, bottom = 400.dp)
+                            .focusRequester(actualFocusRequester)
                             .onPreviewKeyEvent { event ->
                                 handleKeyEvent(event, textFieldValue) { newValue ->
                                     textFieldValue = newValue
@@ -182,8 +195,7 @@ fun CodeEditor(
                         textStyle = MaterialTheme.typography.bodyLarge.copy(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         ),
-                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                        visualTransformation = EmptyLineVisualTransformation()
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary)
                     )
                 }
             }
@@ -191,65 +203,80 @@ fun CodeEditor(
     }
 }
 
-class EmptyLineVisualTransformation : VisualTransformation {
-    override fun filter(text: AnnotatedString): TransformedText {
-        val transformedText = buildAnnotatedString {
-            val lines = text.text.split('\n')
-            lines.forEachIndexed { index, line ->
-                if (line.isEmpty()) {
-                    append(" ")
-                } else {
-                    append(line)
-                }
-                if (index < lines.size - 1) {
-                    append("\n")
-                }
-            }
-        }
-
-        val offsetMapping = object : androidx.compose.ui.text.input.OffsetMapping {
-            override fun originalToTransformed(offset: Int): Int {
-                var emptyLinesBefore = 0
-                val originalText = text.text
-
-                for (i in 0 until offset.coerceAtMost(originalText.length)) {
-                    if (i > 0 && originalText[i - 1] == '\n' &&
-                        (i >= originalText.length || originalText[i] == '\n')) {
-                        emptyLinesBefore++
-                    }
-                }
-
-                return offset + emptyLinesBefore
-            }
-
-            override fun transformedToOriginal(offset: Int): Int {
-                var emptyLinesBefore = 0
-                val lines = text.text.split('\n')
-                var transformedOffset = 0
-
-                for (line in lines) {
-                    if (transformedOffset >= offset) break
-
-                    if (line.isEmpty()) {
-                        emptyLinesBefore++
-                        transformedOffset += 2 // " " + "\n"
-                    } else {
-                        transformedOffset += line.length + 1 // line + "\n"
-                    }
-                }
-
-                return (offset - emptyLinesBefore).coerceAtLeast(0)
-            }
-        }
-
-        return TransformedText(transformedText, offsetMapping)
-    }
-}
-
 private fun handleTextChange(
     oldValue: TextFieldValue,
     newValue: TextFieldValue
 ): TextFieldValue {
+    // Check if a single character was added (not pasted, not deleted)
+    if (newValue.text.length == oldValue.text.length + 1 &&
+        newValue.selection.collapsed) {
+
+        val insertedPos = newValue.selection.start - 1
+        if (insertedPos >= 0 && insertedPos < newValue.text.length) {
+            val insertedChar = newValue.text[insertedPos]
+
+            // Auto-close brackets and quotes
+            val closingChar = when (insertedChar) {
+                '{' -> '}'
+                '(' -> ')'
+                '[' -> ']'
+                '"' -> '"'
+                '\'' -> '\''
+                else -> null
+            }
+
+            if (closingChar != null) {
+                // Insert the closing character
+                val textWithClosing = newValue.text.substring(0, insertedPos + 1) +
+                        closingChar +
+                        newValue.text.substring(insertedPos + 1)
+
+                // Keep cursor between the pair
+                return TextFieldValue(
+                    text = textWithClosing,
+                    selection = TextRange(insertedPos + 1)
+                )
+            }
+        }
+    }
+
+    // Check if backspace was pressed on an opening bracket with matching closing bracket
+    if (newValue.text.length == oldValue.text.length - 1 &&
+        newValue.selection.collapsed &&
+        oldValue.selection.collapsed) {
+
+        val deletedPos = newValue.selection.start
+        if (deletedPos >= 0 && deletedPos < newValue.text.length) {
+            val nextChar = newValue.text[deletedPos]
+            val deletedChar = if (deletedPos < oldValue.text.length) {
+                oldValue.text[deletedPos]
+            } else {
+                null
+            }
+
+            // Check if we deleted an opening bracket and the next char is its closing pair
+            val shouldDeletePair = when {
+                deletedChar == '{' && nextChar == '}' -> true
+                deletedChar == '(' && nextChar == ')' -> true
+                deletedChar == '[' && nextChar == ']' -> true
+                deletedChar == '"' && nextChar == '"' -> true
+                deletedChar == '\'' && nextChar == '\'' -> true
+                else -> false
+            }
+
+            if (shouldDeletePair) {
+                // Delete the closing bracket too
+                val textWithoutPair = newValue.text.substring(0, deletedPos) +
+                        newValue.text.substring(deletedPos + 1)
+
+                return TextFieldValue(
+                    text = textWithoutPair,
+                    selection = TextRange(deletedPos)
+                )
+            }
+        }
+    }
+
     return newValue
 }
 
@@ -262,11 +289,90 @@ private fun handleKeyEvent(
         return false
     }
 
-    // TODO: Add keyboard shortcuts here:
-    // - Tab: Insert 4 spaces
-    // - Shift+Tab: Dedent
-    // - Enter: Auto-indentation
-    // - Brackets: Auto-closing
 
-    return false
+    return when {
+        // Tab: Insert 4 spaces
+        event.key == Key.Tab && !event.isShiftPressed -> {
+            val newText = textFieldValue.text.substring(0, textFieldValue.selection.start) +
+                    "    " + // 4 spaces
+                    textFieldValue.text.substring(textFieldValue.selection.end)
+            val newCursorPos = textFieldValue.selection.start + 4
+            onValueChange(
+                TextFieldValue(
+                    text = newText,
+                    selection = TextRange(newCursorPos)
+                )
+            )
+            true
+        }
+
+        // Shift+Tab: Dedent (remove up to 4 spaces at the beginning of current line)
+        event.key == Key.Tab && event.isShiftPressed -> {
+            val text = textFieldValue.text
+            val cursorPos = textFieldValue.selection.start
+
+            // Find the start of the current line
+            val lineStart = text.lastIndexOf('\n', cursorPos - 1) + 1
+
+            // Get the leading spaces on this line
+            var spacesToRemove = 0
+            for (i in lineStart until minOf(lineStart + 4, text.length)) {
+                if (text[i] == ' ') {
+                    spacesToRemove++
+                } else {
+                    break
+                }
+            }
+
+            if (spacesToRemove > 0) {
+                val newText = text.substring(0, lineStart) +
+                        text.substring(lineStart + spacesToRemove)
+                val newCursorPos = maxOf(lineStart, cursorPos - spacesToRemove)
+                onValueChange(
+                    TextFieldValue(
+                        text = newText,
+                        selection = TextRange(newCursorPos)
+                    )
+                )
+            }
+            true
+        }
+
+        // Enter: Auto-indentation (but not Cmd/Ctrl+Enter which is for run/stop)
+        event.key == Key.Enter && !event.isCtrlPressed && !event.isMetaPressed -> {
+            val text = textFieldValue.text
+            val cursorPos = textFieldValue.selection.start
+
+            // Find the start of the current line
+            val lineStart = text.lastIndexOf('\n', cursorPos - 1) + 1
+            val currentLine = text.substring(lineStart, cursorPos)
+
+            // Count leading spaces on current line
+            val leadingSpaces = currentLine.takeWhile { it == ' ' }.length
+
+            // Check if previous non-whitespace character is an opening bracket
+            val trimmedLine = currentLine.trimEnd()
+            val needsExtraIndent = trimmedLine.isNotEmpty() &&
+                (trimmedLine.last() == '{' || trimmedLine.last() == '(' || trimmedLine.last() == '[')
+
+            // Calculate indentation for new line
+            val indentation = " ".repeat(leadingSpaces + if (needsExtraIndent) 4 else 0)
+
+            // Insert newline with indentation
+            val newText = text.substring(0, cursorPos) +
+                    "\n" + indentation +
+                    text.substring(textFieldValue.selection.end)
+            val newCursorPos = cursorPos + 1 + indentation.length
+
+            onValueChange(
+                TextFieldValue(
+                    text = newText,
+                    selection = TextRange(newCursorPos)
+                )
+            )
+            true
+        }
+
+        else -> false
+    }
 }
