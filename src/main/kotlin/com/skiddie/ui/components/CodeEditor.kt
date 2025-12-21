@@ -351,28 +351,55 @@ private fun handleKeyEvent(
             val text = textFieldValue.text
             val cursorPos = textFieldValue.selection.start
 
+            val prevChar = if (cursorPos > 0) text[cursorPos - 1] else null
+            val nextChar = if (cursorPos < text.length) text[cursorPos] else null
+            val isBetweenBrackets = when {
+                prevChar == '{' && nextChar == '}' -> true
+                prevChar == '(' && nextChar == ')' -> true
+                prevChar == '[' && nextChar == ']' -> true
+                else -> false
+            }
+
             val lineStart = text.lastIndexOf('\n', cursorPos - 1) + 1
             val currentLine = text.substring(lineStart, cursorPos)
 
             val leadingSpaces = currentLine.takeWhile { it == ' ' }.length
 
-            val trimmedLine = currentLine.trimEnd()
-            val needsExtraIndent = trimmedLine.isNotEmpty() &&
-                (trimmedLine.last() == '{' || trimmedLine.last() == '(' || trimmedLine.last() == '[')
+            if (isBetweenBrackets) {
+                val innerIndent = " ".repeat(leadingSpaces + 4)
+                val outerIndent = " ".repeat(leadingSpaces)
+                val newText = text.substring(0, cursorPos) +
+                        "\n" + innerIndent +
+                        "\n" + outerIndent +
+                        text.substring(cursorPos)
+                val newCursorPos = cursorPos + 1 + innerIndent.length
 
-            val indentation = " ".repeat(leadingSpaces + if (needsExtraIndent) 4 else 0)
-
-            val newText = text.substring(0, cursorPos) +
-                    "\n" + indentation +
-                    text.substring(textFieldValue.selection.end)
-            val newCursorPos = cursorPos + 1 + indentation.length
-
-            onValueChange(
-                TextFieldValue(
-                    text = newText,
-                    selection = TextRange(newCursorPos)
+                onValueChange(
+                    TextFieldValue(
+                        text = newText,
+                        selection = TextRange(newCursorPos)
+                    )
                 )
-            )
+            } else {
+
+                val trimmedLine = currentLine.trimEnd()
+                val needsExtraIndent = trimmedLine.isNotEmpty() &&
+                        (trimmedLine.last() == '{' || trimmedLine.last() == '(' || trimmedLine.last() == '[')
+
+                val indentation = " ".repeat(leadingSpaces + if (needsExtraIndent) 4 else 0)
+
+                val newText = text.substring(0, cursorPos) +
+                        "\n" + indentation +
+                        text.substring(textFieldValue.selection.end)
+                val newCursorPos = cursorPos + 1 + indentation.length
+
+                onValueChange(
+                    TextFieldValue(
+                        text = newText,
+                        selection = TextRange(newCursorPos)
+                    )
+                )
+            }
             true
         }
 
