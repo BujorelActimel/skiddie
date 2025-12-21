@@ -25,7 +25,10 @@ fun SkiddieApp(
     onRunStopShortcut: (() -> Unit) -> Unit = {},
     onClearTerminalShortcut: (() -> Unit) -> Unit = {},
     onFocusEditorShortcut: (() -> Unit) -> Unit = {},
-    onFocusTerminalShortcut: (() -> Unit) -> Unit = {}
+    onFocusTerminalShortcut: (() -> Unit) -> Unit = {},
+    onNewFileShortcut: (() -> Unit) -> Unit = {},
+    onSaveFileShortcut: (() -> Unit) -> Unit = {},
+    onOpenFileShortcut: (() -> Unit) -> Unit = {}
 ) {
     val fileManager = remember { FileManager() }
 
@@ -146,6 +149,48 @@ fun SkiddieApp(
         }
         onFocusTerminalShortcut {
             terminalFocusRequester.requestFocus()
+        }
+        onNewFileShortcut {
+            code = fileManager.new()
+            terminalBuffer.clear()
+            fileStateVersion++
+        }
+
+        onSaveFileShortcut {
+            try {
+                if (fileManager.hasFile()) {
+                    fileManager.save(code)
+                    fileStateVersion++
+                } else {
+                    FileDialogs.saveFile(
+                        title = "Save Script",
+                        defaultName = "untitled.${selectedLanguage?.fileExtension ?: "kts"}"
+                    )?.let { file ->
+                        fileManager.save(code, file.absolutePath)
+                        fileStateVersion++
+                    }
+                }
+            } catch (e: Exception) {
+                terminalBuffer.clear()
+                terminalBuffer.addLine(
+                    OutputLine("Error saving file: ${e.message}", OutputType.STDERR)
+                )
+            }
+        }
+
+        onOpenFileShortcut {
+            FileDialogs.openFile(title = "Open Script")?.let { file ->
+                try {
+                    code = fileManager.open(file.absolutePath)
+                    terminalBuffer.clear()
+                    fileStateVersion++
+                } catch (e: Exception) {
+                    terminalBuffer.clear()
+                    terminalBuffer.addLine(
+                        OutputLine("Error opening file: ${e.message}", OutputType.STDERR)
+                    )
+                }
+            }
         }
     }
 

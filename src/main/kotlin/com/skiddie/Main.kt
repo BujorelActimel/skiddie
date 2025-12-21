@@ -16,17 +16,21 @@ fun main() = application {
     val windowState = rememberWindowState(width = 1200.dp, height = 800.dp)
     var windowTitle by remember { mutableStateOf("Skiddie - Untitled") }
 
-    // Callbacks for global shortcuts
     var onRunStopCallback by remember { mutableStateOf<() -> Unit>({}) }
     var onClearTerminalCallback by remember { mutableStateOf<() -> Unit>({}) }
     var onFocusEditorCallback by remember { mutableStateOf<() -> Unit>({}) }
     var onFocusTerminalCallback by remember { mutableStateOf<() -> Unit>({}) }
+    var onNewFileCallback by remember { mutableStateOf<() -> Unit>({}) }
+    var onSaveFileCallback by remember { mutableStateOf<() -> Unit>({}) }
+    var onOpenFileCallback by remember { mutableStateOf<() -> Unit>({}) }
 
-    // Trigger flags for deferred actions
     var triggerFocusEditor by remember { mutableStateOf(0) }
     var triggerFocusTerminal by remember { mutableStateOf(0) }
+    var triggerNewFile by remember { mutableStateOf(0) }
+    var triggerSaveFile by remember { mutableStateOf(0) }
+    var triggerOpenFile by remember { mutableStateOf(0) }
 
-    // Defer focus changes to avoid invalidating focus system during key events
+
     LaunchedEffect(triggerFocusEditor) {
         if (triggerFocusEditor > 0) {
             onFocusEditorCallback()
@@ -39,17 +43,38 @@ fun main() = application {
         }
     }
 
+    LaunchedEffect(triggerNewFile) {
+        if (triggerNewFile > 0) {
+            onNewFileCallback()
+        }
+    }
+
+    LaunchedEffect(triggerSaveFile) {
+        if (triggerSaveFile > 0) {
+            onSaveFileCallback()
+        }
+    }
+
+    LaunchedEffect(triggerOpenFile) {
+        if (triggerOpenFile > 0) {
+            onOpenFileCallback()
+        }
+    }
+
+
     Window(
         onCloseRequest = ::exitApplication,
         title = windowTitle,
         state = windowState,
         onKeyEvent = { event ->
-            // Handle global shortcuts
             val isShortcut = when {
                 event.key == Key.L && (event.isCtrlPressed || event.isMetaPressed) -> true
                 event.key == Key.Enter && (event.isCtrlPressed || event.isMetaPressed) -> true
                 event.key == Key.DirectionLeft && (event.isCtrlPressed || event.isMetaPressed) -> true
                 event.key == Key.DirectionRight && (event.isCtrlPressed || event.isMetaPressed) -> true
+                event.key == Key.N && (event.isCtrlPressed || event.isMetaPressed) -> true
+                event.key == Key.S && (event.isCtrlPressed || event.isMetaPressed) -> true
+                event.key == Key.O && (event.isCtrlPressed || event.isMetaPressed) -> true
                 else -> false
             }
 
@@ -60,9 +85,12 @@ fun main() = application {
                         event.key == Key.Enter -> onRunStopCallback()
                         event.key == Key.DirectionLeft -> triggerFocusEditor++
                         event.key == Key.DirectionRight -> triggerFocusTerminal++
+                        event.key == Key.N -> triggerNewFile++
+                        event.key == Key.S -> triggerSaveFile++
+                        event.key == Key.O -> triggerOpenFile++
                     }
                 }
-                true // Consume both KeyDown and KeyUp
+                true
             } else {
                 false
             }
@@ -76,7 +104,10 @@ fun main() = application {
                 onRunStopShortcut = { callback -> onRunStopCallback = callback },
                 onClearTerminalShortcut = { callback -> onClearTerminalCallback = callback },
                 onFocusEditorShortcut = { callback -> onFocusEditorCallback = callback },
-                onFocusTerminalShortcut = { callback -> onFocusTerminalCallback = callback }
+                onFocusTerminalShortcut = { callback -> onFocusTerminalCallback = callback },
+                onNewFileShortcut = { callback -> onNewFileCallback = callback },
+                onSaveFileShortcut = { callback -> onSaveFileCallback = callback },
+                onOpenFileShortcut = { callback -> onOpenFileCallback = callback }
             )
         }
     }
