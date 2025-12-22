@@ -1,3 +1,4 @@
+
 // This script exits with a non-zero exit code
 // Tests Skiddie's handling of process exit codes
 

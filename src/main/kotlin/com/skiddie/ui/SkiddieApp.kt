@@ -13,6 +13,7 @@ import com.skiddie.file.FileDialogs
 import com.skiddie.file.FileManager
 import com.skiddie.file.FileOperationsHandler
 import com.skiddie.file.FileOperationResult
+import com.skiddie.file.FileStateManager
 import com.skiddie.language.LanguageRegistry
 import com.skiddie.terminal.TerminalBuffer
 import com.skiddie.terminal.TerminalMode
@@ -21,18 +22,16 @@ import com.skiddie.ui.components.TerminalPane
 import com.skiddie.ui.components.ToolBar
 import com.skiddie.ui.components.HelpDialog
 import com.skiddie.ui.viewmodel.ExecutionViewModel
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 @Composable
 fun SkiddieApp(
-    onTitleChange: (String) -> Unit = {},
-    actionFlow: StateFlow<AppAction?>? = null
+    onTitleChange: (String) -> Unit = {}
 ) {
     val fileManager = remember { FileManager() }
+    val fileStateManager = remember { FileStateManager(fileManager) }
     var code by remember { mutableStateOf("// Write your Kotlin code here\n\nfun main() {\n    println(\"Hello, Skiddie!\")\n}") }
     var stdinInput by remember { mutableStateOf("") }
-    var fileStateVersion by remember { mutableStateOf(0) }
 
     val availableLanguages = remember { LanguageRegistry.all() }
     var showHelpDialog by remember { mutableStateOf(false) }
@@ -43,7 +42,7 @@ fun SkiddieApp(
         ExecutionViewModel(
             scope = executorScope,
             fileManager = fileManager,
-            onFileStateChange = { fileStateVersion++ }
+            onFileStateChange = { fileStateManager.refresh() }
         )
     }
 
@@ -64,23 +63,15 @@ fun SkiddieApp(
     val editorFocusRequester = remember { FocusRequester() }
     val terminalFocusRequester = remember { FocusRequester() }
 
+    val fileState by fileStateManager.state.collectAsState()
+
     LaunchedEffect(Unit) {
         editorFocusRequester.requestFocus()
     }
 
-    LaunchedEffect(code, fileStateVersion) {
-        fileManager.markDirty(code)
-        val path = fileManager.getFullDisplayPath()
-        val indicator = fileManager.getDirtyIndicator()
-        onTitleChange("$path$indicator")
-    }
-
-    val fileName = remember(fileStateVersion) {
-        fileManager.getDisplayName()
-    }
-
-    val dirtyIndicator = remember(fileStateVersion) {
-        fileManager.getDirtyIndicator()
+    LaunchedEffect(code) {
+        fileStateManager.updateContent(code)
+        onTitleChange("${fileState.fullPath}${fileState.dirtyIndicator}")
     }
 
     val onStdinSubmit: () -> Unit = {
@@ -105,43 +96,6 @@ fun SkiddieApp(
         executionViewModel.stopScript()
     }
 
-    LaunchedEffect(actionFlow) {
-        actionFlow?.collect { action ->
-            when (action) {
-                AppAction.RunStop -> if (isRunning) stopScript() else runScript()
-                AppAction.ClearTerminal -> executionViewModel.clearTerminal()
-                AppAction.FocusEditor -> editorFocusRequester.requestFocus()
-                AppAction.FocusTerminal -> terminalFocusRequester.requestFocus()
-                AppAction.NewFile -> {
-                    fileOpsHandler.newFile().let { result ->
-                        if (result is FileOperationResult.Success) {
-                            code = result.content
-                            executionViewModel.clearTerminal()
-                            fileStateVersion++
-                        }
-                    }
-                }
-                AppAction.SaveFile -> {
-                    fileOpsHandler.saveFile(code, selectedLanguage?.fileExtension ?: "kts").let { result ->
-                        if (result is FileOperationResult.Success) {
-                            fileStateVersion++
-                        }
-                    }
-                }
-                AppAction.OpenFile -> {
-                    fileOpsHandler.openFile().let { result ->
-                        if (result is FileOperationResult.Success) {
-                            code = result.content
-                            executionViewModel.clearTerminal()
-                            fileStateVersion++
-                        }
-                    }
-                }
-                null -> {/* Ignore null actions */}
-            }
-        }
-    }
-
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
@@ -149,14 +103,50 @@ fun SkiddieApp(
         Column(
             modifier = Modifier.fillMaxSize()
                 .onPreviewKeyEvent { event ->
-                    if (event.type == KeyEventType.KeyDown) {
-                        when {
-                            event.key == Key.Enter && (event.isCtrlPressed || event.isMetaPressed) -> {
+                    if (event.type == KeyEventType.KeyDown && (event.isCtrlPressed || event.isMetaPressed)) {
+                        when (event.key) {
+                            Key.Enter -> {
                                 if (isRunning) stopScript() else runScript()
                                 true
                             }
-                            event.key == Key.L && (event.isCtrlPressed || event.isMetaPressed) -> {
-                                terminalBuffer.clear()
+                            Key.L -> {
+                                executionViewModel.clearTerminal()
+                                true
+                            }
+                            Key.DirectionLeft -> {
+                                editorFocusRequester.requestFocus()
+                                true
+                            }
+                            Key.DirectionRight -> {
+                                terminalFocusRequester.requestFocus()
+                                true
+                            }
+                            Key.N -> {
+                                fileOpsHandler.newFile().let { result ->
+                                    if (result is FileOperationResult.Success) {
+                                        code = result.content
+                                        executionViewModel.clearTerminal()
+                                        fileStateManager.refresh()
+                                    }
+                                }
+                                true
+                            }
+                            Key.S -> {
+                                fileOpsHandler.saveFile(code, selectedLanguage?.fileExtension ?: "kts").let { result ->
+                                    if (result is FileOperationResult.Success) {
+                                        fileStateManager.markSaved()
+                                    }
+                                }
+                                true
+                            }
+                            Key.O -> {
+                                fileOpsHandler.openFile().let { result ->
+                                    if (result is FileOperationResult.Success) {
+                                        code = result.content
+                                        executionViewModel.clearTerminal()
+                                        fileStateManager.refresh()
+                                    }
+                                }
                                 true
                             }
                             else -> false
@@ -181,15 +171,15 @@ fun SkiddieApp(
                     code = code,
                     onCodeChange = { code = it },
                     selectedLanguage = selectedLanguage,
-                    fileName = fileName,
-                    dirtyIndicator = dirtyIndicator,
+                    fileName = fileState.displayName,
+                    dirtyIndicator = fileState.dirtyIndicator,
                     focusRequester = editorFocusRequester,
                     onNew = {
                         fileOpsHandler.newFile().let { result ->
                             if (result is FileOperationResult.Success) {
                                 code = result.content
                                 terminalBuffer.clear()
-                                fileStateVersion++
+                                fileStateManager.refresh()
                             }
                         }
                     },
@@ -198,14 +188,14 @@ fun SkiddieApp(
                             if (result is FileOperationResult.Success) {
                                 code = result.content
                                 terminalBuffer.clear()
-                                fileStateVersion++
+                                fileStateManager.refresh()
                             }
                         }
                     },
                     onSave = {
                         fileOpsHandler.saveFile(code, selectedLanguage?.fileExtension ?: "kts").let { result ->
                             if (result is FileOperationResult.Success) {
-                                fileStateVersion++
+                                fileStateManager.markSaved()
                             }
                         }
                     },
