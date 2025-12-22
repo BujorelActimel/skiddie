@@ -29,7 +29,7 @@ fun TerminalPane(
     onStdinSubmit: () -> Unit,
     onClear: () -> Unit,
     terminalMode: TerminalMode,
-    focusRequester: androidx.compose.ui.focus.FocusRequester? = null,
+    focusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -59,14 +59,8 @@ fun TerminalPane(
             HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f))
 
             val listState = rememberLazyListState()
-            val internalFocusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
+            val internalFocusRequester = remember { FocusRequester() }
             val actualFocusRequester = focusRequester ?: internalFocusRequester
-
-            LaunchedEffect(terminalMode) {
-                if (terminalMode == TerminalMode.INTERACTIVE) {
-                    actualFocusRequester.requestFocus()
-                }
-            }
 
             Box(
                 modifier = Modifier
