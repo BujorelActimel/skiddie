@@ -20,6 +20,7 @@ import com.skiddie.ui.components.CodeEditor
 import com.skiddie.ui.components.TerminalPane
 import com.skiddie.ui.components.ToolBar
 import com.skiddie.ui.components.HelpDialog
+import com.skiddie.ui.viewmodel.ExecutionViewModel
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
@@ -29,32 +30,43 @@ fun SkiddieApp(
     actionFlow: StateFlow<AppAction?>? = null
 ) {
     val fileManager = remember { FileManager() }
-    val terminalBuffer = remember { TerminalBuffer(maxLines = 10000) }
-    val fileOpsHandler = remember {
-        FileOperationsHandler(
-            fileManager = fileManager,
-            onError = { errorMessage ->
-                terminalBuffer.clear()
-                terminalBuffer.addLine(OutputLine(errorMessage, OutputType.STDERR))
-            }
-        )
-    }
-
     var code by remember { mutableStateOf("// Write your Kotlin code here\n\nfun main() {\n    println(\"Hello, Skiddie!\")\n}") }
-    var terminalMode by remember { mutableStateOf(TerminalMode.READ_ONLY) }
     var stdinInput by remember { mutableStateOf("") }
-    var isRunning by remember { mutableStateOf(false) }
     var fileStateVersion by remember { mutableStateOf(0) }
 
     val availableLanguages = remember { LanguageRegistry.all() }
     var showHelpDialog by remember { mutableStateOf(false) }
     var selectedLanguage by remember { mutableStateOf(availableLanguages.firstOrNull()) }
 
-    var executor by remember { mutableStateOf<ScriptExecutor?>(null) }
     val executorScope = rememberCoroutineScope()
+    val executionViewModel = remember {
+        ExecutionViewModel(
+            scope = executorScope,
+            fileManager = fileManager,
+            onFileStateChange = { fileStateVersion++ }
+        )
+    }
+
+    val fileOpsHandler = remember(executionViewModel) {
+        FileOperationsHandler(
+            fileManager = fileManager,
+            onError = { errorMessage ->
+                executionViewModel.terminalBuffer.clear()
+                executionViewModel.terminalBuffer.addLine(OutputLine(errorMessage, OutputType.STDERR))
+            }
+        )
+    }
+
+    val isRunning by executionViewModel.isRunning.collectAsState()
+    val terminalMode by executionViewModel.terminalMode.collectAsState()
+    val terminalBuffer = executionViewModel.terminalBuffer
 
     val editorFocusRequester = remember { FocusRequester() }
     val terminalFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        editorFocusRequester.requestFocus()
+    }
 
     LaunchedEffect(code, fileStateVersion) {
         fileManager.markDirty(code)
@@ -72,91 +84,39 @@ fun SkiddieApp(
     }
 
     val onStdinSubmit: () -> Unit = {
-        if (stdinInput.isNotEmpty() && isRunning) {
+        if (stdinInput.isNotEmpty()) {
             val inputToSend = stdinInput
             stdinInput = ""
-            executorScope.launch {
-                executor?.sendInput(inputToSend)
-            }
+            executionViewModel.sendInput(inputToSend)
         }
     }
 
     val onClearOutput: () -> Unit = {
-        terminalBuffer.clear()
+        executionViewModel.clearTerminal()
     }
 
     val runScript: () -> Unit = {
         selectedLanguage?.let { language ->
-            try {
-                terminalBuffer.clear()
-                terminalMode = TerminalMode.INTERACTIVE
-                isRunning = true
-
-                if (fileManager.hasFile() && fileManager.isDirty()) {
-                    try {
-                        fileManager.save(code)
-                        fileStateVersion++
-                    } catch (e: Exception) {
-                        terminalBuffer.addLine(
-                            OutputLine("Warning: Failed to autosave before run: ${e.message}", OutputType.SYSTEM)
-                        )
-                    }
-                }
-
-                val tempFile = fileManager.getTempFileForExecution(
-                    content = code,
-                    extension = language.fileExtension
-                )
-
-                if (executor == null) {
-                    executor = ScriptExecutor(executorScope)
-                }
-
-                val command = language.runCommand.replace("{file}", tempFile.absolutePath)
-
-                executorScope.launch {
-                    executor?.execute(
-                        command = command,
-                        workingDirectory = tempFile.parentFile,
-                        onOutputLine = { line ->
-                            terminalBuffer.addLine(line)
-                        },
-                        onComplete = { result ->
-                            isRunning = false
-                            terminalMode = TerminalMode.READ_ONLY
-                            tempFile.delete()
-                        }
-                    )
-                }
-            } catch (e: Exception) {
-                terminalBuffer.clear()
-                terminalBuffer.addLine(
-                    OutputLine("Failed to start: ${e.message}", OutputType.STDERR)
-                )
-                terminalMode = TerminalMode.READ_ONLY
-                isRunning = false
-            }
+            executionViewModel.runScript(code, language)
         }
     }
 
     val stopScript: () -> Unit = {
-        executor?.stop()
-        isRunning = false
-        terminalMode = TerminalMode.READ_ONLY
+        executionViewModel.stopScript()
     }
 
     LaunchedEffect(actionFlow) {
         actionFlow?.collect { action ->
             when (action) {
                 AppAction.RunStop -> if (isRunning) stopScript() else runScript()
-                AppAction.ClearTerminal -> terminalBuffer.clear()
+                AppAction.ClearTerminal -> executionViewModel.clearTerminal()
                 AppAction.FocusEditor -> editorFocusRequester.requestFocus()
                 AppAction.FocusTerminal -> terminalFocusRequester.requestFocus()
                 AppAction.NewFile -> {
                     fileOpsHandler.newFile().let { result ->
                         if (result is FileOperationResult.Success) {
                             code = result.content
-                            terminalBuffer.clear()
+                            executionViewModel.clearTerminal()
                             fileStateVersion++
                         }
                     }
@@ -172,7 +132,7 @@ fun SkiddieApp(
                     fileOpsHandler.openFile().let { result ->
                         if (result is FileOperationResult.Success) {
                             code = result.content
-                            terminalBuffer.clear()
+                            executionViewModel.clearTerminal()
                             fileStateVersion++
                         }
                     }
