@@ -40,13 +40,6 @@ println("${ansi("1;32")}✓ Success:${reset()} Operation completed successfully"
 println("${ansi("1;31")}✗ Error:${reset()} Something went wrong")
 println("${ansi("1;33")}⚠ Warning:${reset()} Please check your input")
 
-print("${ansi("36")}Processing: ${reset()}")
-for (i in 1..10) {
-    print("${ansi("1;32")}█${reset()}")
-    Thread.sleep(150)
-}
-println(" ${ansi("1;32")}Done!${reset()}")
-
 println("\n${ansi("1;37")}Color Table:${reset()}")
 println("${ansi("1")}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${reset()}")
 println("${ansi("1;34")}Name${reset()}        ${ansi("1;34")}Status${reset()}")
