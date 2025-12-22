@@ -11,6 +11,8 @@ import com.skiddie.execution.OutputType
 import com.skiddie.execution.ScriptExecutor
 import com.skiddie.file.FileDialogs
 import com.skiddie.file.FileManager
+import com.skiddie.file.FileOperationsHandler
+import com.skiddie.file.FileOperationResult
 import com.skiddie.language.LanguageRegistry
 import com.skiddie.terminal.TerminalBuffer
 import com.skiddie.terminal.TerminalMode
@@ -32,9 +34,18 @@ fun SkiddieApp(
     onOpenFileShortcut: (() -> Unit) -> Unit = {}
 ) {
     val fileManager = remember { FileManager() }
+    val terminalBuffer = remember { TerminalBuffer(maxLines = 10000) }
+    val fileOpsHandler = remember {
+        FileOperationsHandler(
+            fileManager = fileManager,
+            onError = { errorMessage ->
+                terminalBuffer.clear()
+                terminalBuffer.addLine(OutputLine(errorMessage, OutputType.STDERR))
+            }
+        )
+    }
 
     var code by remember { mutableStateOf("// Write your Kotlin code here\n\nfun main() {\n    println(\"Hello, Skiddie!\")\n}") }
-    val terminalBuffer = remember { TerminalBuffer(maxLines = 10000) }
     var terminalMode by remember { mutableStateOf(TerminalMode.READ_ONLY) }
     var stdinInput by remember { mutableStateOf("") }
     var isRunning by remember { mutableStateOf(false) }
@@ -153,44 +164,29 @@ fun SkiddieApp(
             terminalFocusRequester.requestFocus()
         }
         onNewFileShortcut {
-            code = fileManager.new()
-            terminalBuffer.clear()
-            fileStateVersion++
+            fileOpsHandler.newFile().let { result ->
+                if (result is FileOperationResult.Success) {
+                    code = result.content
+                    terminalBuffer.clear()
+                    fileStateVersion++
+                }
+            }
         }
 
         onSaveFileShortcut {
-            try {
-                if (fileManager.hasFile()) {
-                    fileManager.save(code)
+            fileOpsHandler.saveFile(code, selectedLanguage?.fileExtension ?: "kts").let { result ->
+                if (result is FileOperationResult.Success) {
                     fileStateVersion++
-                } else {
-                    FileDialogs.saveFile(
-                        title = "Save Script",
-                        defaultName = "untitled.${selectedLanguage?.fileExtension ?: "kts"}"
-                    )?.let { file ->
-                        fileManager.save(code, file.absolutePath)
-                        fileStateVersion++
-                    }
                 }
-            } catch (e: Exception) {
-                terminalBuffer.clear()
-                terminalBuffer.addLine(
-                    OutputLine("Error saving file: ${e.message}", OutputType.STDERR)
-                )
             }
         }
 
         onOpenFileShortcut {
-            FileDialogs.openFile(title = "Open Script")?.let { file ->
-                try {
-                    code = fileManager.open(file.absolutePath)
+            fileOpsHandler.openFile().let { result ->
+                if (result is FileOperationResult.Success) {
+                    code = result.content
                     terminalBuffer.clear()
                     fileStateVersion++
-                } catch (e: Exception) {
-                    terminalBuffer.clear()
-                    terminalBuffer.addLine(
-                        OutputLine("Error opening file: ${e.message}", OutputType.STDERR)
-                    )
                 }
             }
         }
@@ -239,43 +235,28 @@ fun SkiddieApp(
                     dirtyIndicator = dirtyIndicator,
                     focusRequester = editorFocusRequester,
                     onNew = {
-                        code = fileManager.new()
-                        terminalBuffer.clear()
-                        fileStateVersion++
-                    },
-                    onOpen = {
-                        FileDialogs.openFile(title = "Open Script")?.let { file ->
-                            try {
-                                code = fileManager.open(file.absolutePath)
+                        fileOpsHandler.newFile().let { result ->
+                            if (result is FileOperationResult.Success) {
+                                code = result.content
                                 terminalBuffer.clear()
                                 fileStateVersion++
-                            } catch (e: Exception) {
+                            }
+                        }
+                    },
+                    onOpen = {
+                        fileOpsHandler.openFile().let { result ->
+                            if (result is FileOperationResult.Success) {
+                                code = result.content
                                 terminalBuffer.clear()
-                                terminalBuffer.addLine(
-                                    OutputLine("Error opening file: ${e.message}", OutputType.STDERR)
-                                )
+                                fileStateVersion++
                             }
                         }
                     },
                     onSave = {
-                        try {
-                            if (fileManager.hasFile()) {
-                                fileManager.save(code)
+                        fileOpsHandler.saveFile(code, selectedLanguage?.fileExtension ?: "kts").let { result ->
+                            if (result is FileOperationResult.Success) {
                                 fileStateVersion++
-                            } else {
-                                FileDialogs.saveFile(
-                                    title = "Save Script",
-                                    defaultName = "untitled.${selectedLanguage?.fileExtension ?: "kts"}"
-                                )?.let { file ->
-                                    fileManager.save(code, file.absolutePath)
-                                    fileStateVersion++
-                                }
                             }
-                        } catch (e: Exception) {
-                            terminalBuffer.clear()
-                            terminalBuffer.addLine(
-                                OutputLine("Error saving file: ${e.message}", OutputType.STDERR)
-                            )
                         }
                     },
                     modifier = Modifier.weight(0.65f).fillMaxHeight()
