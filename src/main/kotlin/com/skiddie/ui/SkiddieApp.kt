@@ -17,6 +17,7 @@ import com.skiddie.terminal.TerminalMode
 import com.skiddie.ui.components.CodeEditor
 import com.skiddie.ui.components.TerminalPane
 import com.skiddie.ui.components.ToolBar
+import com.skiddie.ui.components.HelpDialog
 import kotlinx.coroutines.launch
 
 @Composable
@@ -40,6 +41,7 @@ fun SkiddieApp(
     var fileStateVersion by remember { mutableStateOf(0) }
 
     val availableLanguages = remember { LanguageRegistry.all() }
+    var showHelpDialog by remember { mutableStateOf(false) }
     var selectedLanguage by remember { mutableStateOf(availableLanguages.firstOrNull()) }
 
     var executor by remember { mutableStateOf<ScriptExecutor?>(null) }
@@ -224,10 +226,7 @@ fun SkiddieApp(
                 onLanguageSelected = { selectedLanguage = it },
                 onRun = runScript,
                 onStop = stopScript,
-                onHelp = {
-                    // TODO: Show help dialog
-                    println("Help clicked")
-                },
+                onHelp = { showHelpDialog = true },
                 isRunning = isRunning
             )
 
@@ -295,6 +294,9 @@ fun SkiddieApp(
                     modifier = Modifier.weight(0.35f).fillMaxHeight()
                 )
             }
+        }
+        if (showHelpDialog) {
+            HelpDialog(onDismiss = { showHelpDialog = false })
         }
     }
 }
