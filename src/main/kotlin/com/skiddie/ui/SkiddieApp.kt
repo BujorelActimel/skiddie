@@ -20,18 +20,13 @@ import com.skiddie.ui.components.CodeEditor
 import com.skiddie.ui.components.TerminalPane
 import com.skiddie.ui.components.ToolBar
 import com.skiddie.ui.components.HelpDialog
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 @Composable
 fun SkiddieApp(
     onTitleChange: (String) -> Unit = {},
-    onRunStopShortcut: (() -> Unit) -> Unit = {},
-    onClearTerminalShortcut: (() -> Unit) -> Unit = {},
-    onFocusEditorShortcut: (() -> Unit) -> Unit = {},
-    onFocusTerminalShortcut: (() -> Unit) -> Unit = {},
-    onNewFileShortcut: (() -> Unit) -> Unit = {},
-    onSaveFileShortcut: (() -> Unit) -> Unit = {},
-    onOpenFileShortcut: (() -> Unit) -> Unit = {}
+    actionFlow: StateFlow<AppAction?>? = null
 ) {
     val fileManager = remember { FileManager() }
     val terminalBuffer = remember { TerminalBuffer(maxLines = 10000) }
@@ -150,44 +145,39 @@ fun SkiddieApp(
         terminalMode = TerminalMode.READ_ONLY
     }
 
-    LaunchedEffect(Unit) {
-        onRunStopShortcut {
-            if (isRunning) stopScript() else runScript()
-        }
-        onClearTerminalShortcut {
-            terminalBuffer.clear()
-        }
-        onFocusEditorShortcut {
-            editorFocusRequester.requestFocus()
-        }
-        onFocusTerminalShortcut {
-            terminalFocusRequester.requestFocus()
-        }
-        onNewFileShortcut {
-            fileOpsHandler.newFile().let { result ->
-                if (result is FileOperationResult.Success) {
-                    code = result.content
-                    terminalBuffer.clear()
-                    fileStateVersion++
+    LaunchedEffect(actionFlow) {
+        actionFlow?.collect { action ->
+            when (action) {
+                AppAction.RunStop -> if (isRunning) stopScript() else runScript()
+                AppAction.ClearTerminal -> terminalBuffer.clear()
+                AppAction.FocusEditor -> editorFocusRequester.requestFocus()
+                AppAction.FocusTerminal -> terminalFocusRequester.requestFocus()
+                AppAction.NewFile -> {
+                    fileOpsHandler.newFile().let { result ->
+                        if (result is FileOperationResult.Success) {
+                            code = result.content
+                            terminalBuffer.clear()
+                            fileStateVersion++
+                        }
+                    }
                 }
-            }
-        }
-
-        onSaveFileShortcut {
-            fileOpsHandler.saveFile(code, selectedLanguage?.fileExtension ?: "kts").let { result ->
-                if (result is FileOperationResult.Success) {
-                    fileStateVersion++
+                AppAction.SaveFile -> {
+                    fileOpsHandler.saveFile(code, selectedLanguage?.fileExtension ?: "kts").let { result ->
+                        if (result is FileOperationResult.Success) {
+                            fileStateVersion++
+                        }
+                    }
                 }
-            }
-        }
-
-        onOpenFileShortcut {
-            fileOpsHandler.openFile().let { result ->
-                if (result is FileOperationResult.Success) {
-                    code = result.content
-                    terminalBuffer.clear()
-                    fileStateVersion++
+                AppAction.OpenFile -> {
+                    fileOpsHandler.openFile().let { result ->
+                        if (result is FileOperationResult.Success) {
+                            code = result.content
+                            terminalBuffer.clear()
+                            fileStateVersion++
+                        }
+                    }
                 }
+                null -> {/* Ignore null actions */}
             }
         }
     }
