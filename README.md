@@ -1,13 +1,37 @@
-# Skiddie script editor
+# Skiddie
 
-MUST-have features:
+A lightweight, cross-platform script editor built with Compose Desktop.
 
-- code editor panel + i/o panel
-- kotlin syntax highlighting - tree-sitter perhaps
-- cross platform
-- fast as fuck boi
+## Prerequisites
 
-Nice to have:
+- **JDK 21+** - Required to build and run
+- **Kotlin Compiler** - For running Kotlin scripts (`kotlinc`)
+- **Swift** - For running Swift scripts (macOS/Linux)
 
-- lsp?
-- click error -> to editor
+## Demo
+
+coming soon
+
+## Features
+
+- **Syntax Highlighting** - Tree-sitter powered highlighting for Kotlin and Swift
+- **Interactive Terminal** - Run scripts and see output in real-time with stdin support
+- **File Management** - New, open, save with keyboard shortcuts
+- **Keyboard Shortcuts** - Fast workflow with shortcuts for all operations
+- **Cross-platform** - Runs on macOS, Linux, and Windows
+
+## Build & Run
+
+```bash
+./gradlew run
+```
+
+## Keyboard Shortcuts
+
+- `Cmd/Ctrl + Enter` - Run/Stop script
+- `Cmd/Ctrl + N` - New file
+- `Cmd/Ctrl + O` - Open file
+- `Cmd/Ctrl + S` - Save file
+- `Cmd/Ctrl + L` - Clear terminal
+- `Cmd/Ctrl + ←/→` - Focus editor/terminal
+- `?` button - Show all shortcuts
