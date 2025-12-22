@@ -8,15 +8,11 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.input.key.*
 import com.skiddie.execution.OutputLine
 import com.skiddie.execution.OutputType
-import com.skiddie.execution.ScriptExecutor
-import com.skiddie.file.FileDialogs
 import com.skiddie.file.FileManager
 import com.skiddie.file.FileOperationsHandler
 import com.skiddie.file.FileOperationResult
 import com.skiddie.file.FileStateManager
 import com.skiddie.language.LanguageRegistry
-import com.skiddie.terminal.TerminalBuffer
-import com.skiddie.terminal.TerminalMode
 import com.skiddie.ui.components.CodeEditor
 import com.skiddie.ui.components.TerminalPane
 import com.skiddie.ui.components.ToolBar
