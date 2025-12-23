@@ -10,7 +10,14 @@ A lightweight, cross-platform script editor built with Compose Desktop.
 
 ## Demo
 
-coming soon
+### MacOS support
+![darwin](assets/darwin.png)
+
+### Ansi color support
+![ansi](assets/ansi.png)
+
+### User input support
+![input](assets/input.gif)
 
 ## Features
 
