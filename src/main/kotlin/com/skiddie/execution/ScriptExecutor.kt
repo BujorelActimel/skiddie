@@ -29,6 +29,21 @@ class ScriptExecutor(
                     .directory(workingDirectory)
                     .redirectErrorStream(true)
 
+                val currentEnv = processBuilder.environment()
+                val currentPath = currentEnv["PATH"] ?: ""
+                val homeDir = System.getProperty("user.home")
+                val additionalPaths = listOf(
+                    "/opt/homebrew/bin",
+                    "/usr/local/bin",
+                    "$homeDir/.sdkman/candidates/kotlin/current/bin",
+                    "/usr/bin",
+                    "/bin"
+                )
+                val newPath = (additionalPaths + currentPath.split(":"))
+                    .distinct()
+                    .joinToString(":")
+                currentEnv["PATH"] = newPath
+
                 withContext(Dispatchers.Main) {
                     onOutputLine(OutputLine("Starting process...", OutputType.SYSTEM))
                 }

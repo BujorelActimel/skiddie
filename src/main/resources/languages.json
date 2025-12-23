@@ -5,7 +5,7 @@
       "name": "Kotlin",
       "fileExtension": "kts",
       "grammarPath": "kotlin",
-      "runCommand": "kotlinc -script {file}",
+      "runCommand": "/usr/bin/env kotlinc -script {file}",
       "isBuiltIn": true
     },
     {

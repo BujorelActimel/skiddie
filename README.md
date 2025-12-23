@@ -4,7 +4,7 @@ A lightweight, cross-platform script editor built with Compose Desktop.
 
 ## Prerequisites
 
-- **JDK 21+** - Required to build and run
+- **JDK 21** - Required to build and run
 - **Kotlin Compiler** - For running Kotlin scripts (`kotlinc`)
 - **Swift** - For running Swift scripts (macOS/Linux)
 
@@ -22,8 +22,24 @@ coming soon
 
 ## Build & Run
 
+### Development
+
 ```bash
 ./gradlew run
+```
+
+### Build Standalone Application
+
+```bash
+./gradlew package
+
+# Or
+./gradlew packageDistributionForCurrentOS
+
+# Or build specific formats:
+./gradlew packageDmg    # macOS .dmg installer
+./gradlew packageDeb    # Linux .deb package
+./gradlew packageMsi    # Windows .msi installer
 ```
 
 ## Keyboard Shortcuts

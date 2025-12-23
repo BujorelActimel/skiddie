@@ -51,15 +51,15 @@ compose.desktop {
             description = "Fast script editor"
             vendor = "Skiddie"
 
-            linux {
-                iconFile.set(project.file("src/main/resources/icon.png"))
-            }
-            windows {
-                iconFile.set(project.file("src/main/resources/icon.ico"))
-            }
-            macOS {
-                iconFile.set(project.file("src/main/resources/icon.icns"))
-            }
+            // linux {
+            //     iconFile.set(project.file("src/main/resources/icon.png"))
+            // }
+            // windows {
+            //     iconFile.set(project.file("src/main/resources/icon.ico"))
+            // }
+            // macOS {
+            //     iconFile.set(project.file("src/main/resources/icon.icns"))
+            // }
         }
     }
 }
