@@ -16,6 +16,9 @@ A lightweight, cross-platform script editor built with Compose Desktop.
 ### Linux support
 ![linux](assets/linux.png)
 
+### Windows support
+![windows](assets/windows.png)
+
 ### Ansi color support
 ![ansi](assets/ansi.png)
 
